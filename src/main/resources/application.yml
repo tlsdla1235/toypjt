@@ -1,0 +1,81 @@
+spring:
+  application:
+    name: flag-game
+
+  # 프로파일: local (기본, IntelliJ 실행) / prod (배포, Docker)
+  profiles:
+    active: local
+
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:flaggame}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&rewriteBatchedStatements=true
+    username: ${DB_USERNAME:flaggame}
+    password: ${DB_PASSWORD:flaggame_pw}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 2000
+      pool-name: FlagGameHikariPool
+
+  jpa:
+    hibernate:
+      ddl-auto: validate   # 스키마는 Flyway가 관리. Hibernate는 검증만 한다.
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          batch_size: 50
+    open-in-view: false    # N+1 숨기지 말고, 서비스 계층에서 명시적으로 페치하게 강제
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+server:
+  port: 8080
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# Swagger (springdoc)
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+
+# Actuator (메트릭 노출)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    tags:
+      application: flag-game
+
+# 프로젝트 고유 설정 (Day 2에서 채움)
+app:
+  jwt:
+    secret: ${JWT_SECRET:}
+    access-ttl-sec: ${JWT_ACCESS_TTL_SEC:3600}
+    refresh-ttl-sec: ${JWT_REFRESH_TTL_SEC:1209600}
+  oauth:
+    github:
+      client-id: ${GITHUB_CLIENT_ID:}
+      client-secret: ${GITHUB_CLIENT_SECRET:}
+
+---
+# prod 프로파일 오버라이드 (배포 환경)
+spring:
+  config:
+    activate:
+      on-profile: prod
+  jpa:
+    properties:
+      hibernate:
+        format_sql: false
