@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- Spring Boot가 제공하는 기본 변수들 (로그 경로, 패턴 등) 가져오기 -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- 로그 파일 저장 위치 (application.yml의 logging.file.path 또는 기본값) -->
+    <springProperty scope="context" name="LOG_PATH"
+                    source="logging.file.path" defaultValue="./logs"/>
+    <springProperty scope="context" name="APP_NAME"
+                    source="spring.application.name" defaultValue="flag-game"/>
+
+    <!-- ===================================================================
+         민감정보 마스킹 패턴
+         - Authorization 헤더의 Bearer 토큰
+         - access_token 쿼리/폼 파라미터
+         - GitHub 토큰 (gho_, ghp_ 접두어)
+         =================================================================== -->
+    <property name="MASK_BEARER" value="Bearer [A-Za-z0-9._\-]+"/>
+    <property name="MASK_TOKEN"  value="access_token=[^\s&amp;]+"/>
+    <property name="MASK_GH"     value="gh[opsu]_[A-Za-z0-9]+"/>
+
+    <!-- ===================================================================
+         1) CONSOLE Appender — 개발 중엔 사람이 읽기 좋은 포맷
+         =================================================================== -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level [%X{requestId:-NONE}] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ===================================================================
+         2) JSON FILE Appender — 기계 파싱 가능한 구조화 로그
+         100MB × 7일 × 총 1GB 상한 (spec §13.5)
+         =================================================================== -->
+    <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${APP_NAME}.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/${APP_NAME}.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <timeZone>Asia/Seoul</timeZone>
+            <!-- MDC에 있는 모든 키(requestId, userId, eventId…)가 자동으로 JSON 필드로 포함됨 -->
+            <customFields>{"app":"${APP_NAME}"}</customFields>
+        </encoder>
+    </appender>
+
+    <!-- ===================================================================
+         3) 비동기 래퍼 — 파일 I/O가 API 스레드를 블록하지 않도록
+         큐 가득 차도 INFO 이상은 drop하지 않음 (spec §13.6)
+         =================================================================== -->
+    <appender name="ASYNC_JSON_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <includeCallerData>false</includeCallerData>
+        <appender-ref ref="JSON_FILE"/>
+    </appender>
+
+    <!-- ===================================================================
+         로거 레벨 규율 (spec §13.3)
+         - 내 코드는 INFO
+         - Hibernate SQL 파라미터 같은 고볼륨은 WARN으로 낮춰둠
+         =================================================================== -->
+    <logger name="com.sst.flaggame"       level="INFO"/>
+    <logger name="org.hibernate.SQL"      level="WARN"/>
+    <logger name="org.hibernate.orm.jdbc" level="WARN"/>
+
+    <!-- ===================================================================
+         프로파일별 ROOT 설정
+         - local: 콘솔 + JSON 파일 둘 다
+         - prod: JSON 파일만 (콘솔은 Docker stdout로 찍게 둠 — 나중에 조정)
+         =================================================================== -->
+    <springProfile name="local">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_JSON_FILE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_JSON_FILE"/>
+        </root>
+    </springProfile>
+
+    <!-- 프로파일이 안 맞을 때 fallback -->
+    <springProfile name="!local &amp; !prod">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+</configuration>

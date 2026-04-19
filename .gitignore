@@ -37,3 +37,7 @@ out/
 .vscode/
 
 .env
+
+### logs ###
+logs/
+# Runtime logs

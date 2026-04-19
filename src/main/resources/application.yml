@@ -36,7 +36,9 @@ server:
   error:
     include-message: always
     include-binding-errors: always
-
+logging:
+  file:
+    path: ./logs
 # Swagger (springdoc)
 springdoc:
   api-docs:
