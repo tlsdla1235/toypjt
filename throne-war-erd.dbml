@@ -1,0 +1,199 @@
+// Use DBML to define your database structure
+// Docs: https://dbml.dbdiagram.io/docs
+
+// ============================================================
+// SSAFY 왕좌전 (Throne War) — ERD
+// 기반: ssafy-throne-war-final-spec-v5.0.md §8 데이터 모델
+//
+// v5.0 대비 변경 요약 (v4.3.1 DBML 기준):
+//  - int → bigint (append-only 고볼륨 대비 일관화)
+//  - users.role ENUM에서 SYSTEM 제거 (id=1 상수로 식별)
+//  - claim_result에서 LOCK_CONFLICT, NO_ACTIVE_EVENT 제거
+//    (ReentrantLock은 경합 실패 미노출, NO_ACTIVE_EVENT는 Counter 메트릭만)
+//  - current_throne.version 컬럼 제거 (낙관적 락 A3 실험은 19장으로 이관)
+//  - users, events에 deleted_at 추가 (@SoftDelete)
+// ============================================================
+
+// ---------- ENUM ----------
+
+// 이벤트 상태 머신
+enum event_status {
+  DRAFT       // 생성됐으나 아직 시작 전
+  RUNNING     // 진행 중 (전역 1개 제약)
+  ENDED       // 종료됐으나 finalize 전 (summary 생성 대기)
+  FINALIZED   // 시상/통계 집계 완료, 불변
+}
+
+// 사용자 권한 (SYSTEM은 별도 role이 아니라 id=1 상수로 식별)
+enum user_role {
+  USER
+  ADMIN
+}
+
+// 찬탈 시도 결과 (4종만)
+// 과거 LOCK_CONFLICT / NO_ACTIVE_EVENT는 v5.0에서 제거
+// - LOCK_CONFLICT: ReentrantLock 순차 처리로 락 실패가 없음
+// - NO_ACTIVE_EVENT: DB 기록 없이 Counter 메트릭으로만 관찰
+enum claim_result {
+  SUCCESS         // 정상 찬탈 성공
+  COOLDOWN        // 쿨타임 중
+  ALREADY_OWNER   // 본인이 이미 왕
+  NOT_RUNNING     // 이벤트가 RUNNING이 아님
+}
+
+// 시상 종류
+enum award_type {
+  LONGEST_REIGN   // 👑 군림상 — 단일 reign 최장 보유
+  USURPER         // ⚔️ 찬탈왕 — 찬탈 성공 횟수 최다
+  LAST_KING       // 🌅 최후의 왕 — 이벤트 종료 시 왕좌 보유자
+}
+
+// ---------- 테이블 ----------
+
+// 사용자 (GitHub OAuth로 생성)
+// SYSTEM seed 유저(id=1, login='SYSTEM', github_id=0, role='ADMIN')가
+// 이벤트 시작 시 초기 reign 소유자로 사용됨. V2 마이그레이션으로 삽입.
+Table users {
+  id          bigint      [pk, increment, note: '내부 PK. SYSTEM은 id=1 상수로 식별']
+  github_id   bigint      [unique, not null, note: 'GitHub numeric id. SYSTEM은 0']
+  login       varchar(64) [not null, note: 'GitHub login handle (표시용, 고유 보장 안 됨)']
+  avatar_url  varchar(512) [note: 'GitHub 아바타 URL. nullable']
+  role        user_role   [not null, default: 'USER', note: '권한. ADMIN만 관리자 API 호출 가능']
+  blocked     boolean     [not null, default: false, note: '관리자 수동 블록. true면 찬탈 API 거부']
+  created_at  timestamp   [default: `CURRENT_TIMESTAMP`, note: '가입 시각']
+  deleted_at  timestamp   [note: '@SoftDelete. null이면 활성, 값이 있으면 비활성. FK 참조 보존을 위해 hard delete 금지']
+
+  indexes {
+    login                 [note: '로그인 핸들 검색']
+    deleted_at            [note: '활성 유저 필터링용']
+  }
+}
+
+// 이벤트 (관리자가 생성하는 왕좌전 세션)
+Table events {
+  id            bigint       [pk, increment, note: '이벤트 PK']
+  name          varchar(128) [not null, note: '이벤트 이름 (UI 표시용)']
+  status        event_status [not null, note: '상태 머신. DRAFT→RUNNING→ENDED→FINALIZED 단방향']
+  cooldown_ms   int          [not null, default: 3000, note: '찬탈 쿨타임(ms). 기본 3초']
+  duration_h    int          [not null, default: 24, note: '이벤트 길이(시간). 기본 24h']
+  started_at    timestamp    [note: '/start 호출 시각. DRAFT 상태에선 null']
+  ends_at       timestamp    [note: '예정 종료 시각 = started_at + duration_h. 스케줄러가 이 시각에 자동 /end']
+  ended_at      timestamp    [note: '실제 종료 시각. /end 또는 자동 종료 시 set']
+  finalized_at  timestamp    [note: '/finalize 호출 시각. 시상 계산 완료 시점']
+  created_by    bigint       [not null, ref: > users.id, note: '이벤트 생성자(ADMIN)']
+  created_at    timestamp    [default: `CURRENT_TIMESTAMP`, note: '생성 시각']
+  deleted_at    timestamp    [note: '@SoftDelete. DRAFT 상태에서만 삭제 허용. FINALIZED 이벤트는 영구 보존']
+
+  indexes {
+    status                   [note: 'RUNNING 이벤트 조회 (/start 시 전역 1개 제약 체크)']
+    deleted_at               [note: '활성 이벤트 필터링용']
+  }
+}
+
+// 이벤트별 참가자 (집계 캐시 테이블 역할)
+// Caffeine write-back이 10초마다 UPDATE 하며, 리더보드 조회의 기준 테이블.
+// SYSTEM(user_id=1) row는 절대 생성되지 않음 (AggregationCache에서 필터링).
+Table event_participants {
+  event_id           bigint    [not null, ref: > events.id, note: '이벤트 FK']
+  user_id            bigint    [not null, ref: > users.id, note: '참가자 FK (SYSTEM 제외)']
+  total_hold_ms      bigint    [not null, default: 0, note: '누적 왕좌 보유 시간 합계 (ms)']
+  claim_success_cnt  int       [not null, default: 0, note: '찬탈 성공 횟수']
+  longest_reign_ms   bigint    [not null, default: 0, note: '이 유저의 단일 reign 최장 기록 (시상용)']
+  joined_at          timestamp [default: `CURRENT_TIMESTAMP`, note: '첫 집계 반영 시각']
+  updated_at         timestamp [default: `CURRENT_TIMESTAMP`, note: '마지막 write-back flush 시각']
+
+  indexes {
+    (event_id, user_id) [pk]
+    (event_id, total_hold_ms) [note: '리더보드 Top N 커버링 인덱스 (DESC)']
+  }
+}
+
+// 왕좌 보유 이력 (한 reign = 한 행, append-only)
+// 이벤트 /start 시 SYSTEM 유저로 초기 reign 1건 자동 생성.
+// Phase 3에서는 id의 AUTO_INCREMENT가 비활성화되고 Redis INCR global:reign_seq 값을 그대로 사용.
+Table throne_reigns {
+  id           bigint       [pk, increment, note: 'reign PK. Phase 3에서 Redis 채번값 사용(AUTO_INCREMENT 해제)']
+  event_id     bigint       [not null, ref: > events.id, note: '이벤트 FK']
+  user_id      bigint       [not null, ref: > users.id, note: '왕좌 보유자 (초기 reign은 SYSTEM)']
+  started_at   timestamp    [not null, note: '이 reign 시작 시각. TIMESTAMP(3) ms 정밀도']
+  ended_at     timestamp    [note: '이 reign 종료 시각. null이면 현재 진행 중 (이벤트당 최대 1개)']
+  duration_ms  bigint       [note: 'ended_at - started_at. closeReign 시 계산되어 저장']
+
+  indexes {
+    (event_id, user_id)     [note: '유저별 reign 조회']
+    (event_id, ended_at)    [note: '"마지막 왕" 조회, 진행 중 reign 탐색']
+  }
+}
+
+// 현재 왕 (이벤트당 1행, 동시성 핫스팟)
+// Phase 1: ReentrantLock으로 보호된 트랜잭션 내에서 UPDATE
+// Phase 3: Redis Lua로 이전, 이 테이블은 영속 복사본(Consumer가 UPDATE)
+// 이벤트 /start 시 SYSTEM seed reign으로 초기화되어 "공석 상태 없음" 보장.
+Table current_throne {
+  event_id    bigint       [pk, ref: > events.id, note: '이벤트 FK (이벤트당 1행)']
+  reign_id    bigint       [not null, ref: > throne_reigns.id, note: '현재 활성 reign 참조']
+  user_id     bigint       [not null, ref: > users.id, note: '현재 왕의 user_id (SYSTEM일 수 있음)']
+  held_since  timestamp    [not null, note: '현재 왕이 보유하기 시작한 시각. TIMESTAMP(3)']
+}
+
+// 찬탈 시도 로그 (성공/실패 모두, append-only)
+// Phase 1: 매 요청 단건 INSERT (성공=afterCommit, 실패=REQUIRES_NEW)
+// Phase 2 개선 #2: 500건/500ms 배치 INSERT로 전환
+// FK는 의도적으로 걸지 않음 (고볼륨 append-only, 처리량 상한 회피)
+// NO_ACTIVE_EVENT는 이 테이블에 기록하지 않음 — Counter 메트릭만.
+Table throne_claims {
+  id            bigint       [pk, increment, note: '로그 PK']
+  event_id      bigint       [not null, note: '이벤트 id (FK 미설정 — 고볼륨 append-only. 앱에서 무결성 보장)']
+  user_id       bigint       [not null, note: '찬탈 시도 유저 id (FK 미설정)']
+  result        claim_result [not null, note: '시도 결과 4종: SUCCESS/COOLDOWN/ALREADY_OWNER/NOT_RUNNING']
+  requested_at  timestamp    [not null, note: '요청 수신 시각. TIMESTAMP(3) ms 정밀도']
+
+  indexes {
+    (event_id, requested_at) [note: '시간대별 집계 (hourly 통계)']
+    (event_id, user_id)      [note: '유저별 시도 히스토리']
+  }
+}
+
+// 쿨타임 (유저별 현재 쿨타임)
+// PRIMARY KEY (event_id, user_id) 기반 upsert.
+// expires_at이 과거이면 만료된 것으로 간주, 1분 주기 스케줄러가 hard delete.
+Table cooldowns {
+  event_id    bigint    [not null, ref: > events.id, note: '이벤트 FK']
+  user_id     bigint    [not null, ref: > users.id, note: '쿨타임 중인 유저 FK']
+  expires_at  timestamp [not null, note: '쿨타임 만료 시각. TIMESTAMP(3). 과거면 찬탈 허용']
+
+  indexes {
+    (event_id, user_id) [pk]
+    expires_at          [note: '만료 일괄 삭제 스케줄러용']
+  }
+}
+
+// 리더보드 스냅샷 (Phase 1: 5분 배치, Phase 3: Redis ZSET으로 대체)
+// captured_at은 5분 경계로 truncate되어 PK 충돌 방어 (INSERT IGNORE 조합).
+Table leaderboard_snapshot {
+  event_id       bigint    [not null, ref: > events.id, note: '이벤트 FK']
+  rank_no        int       [not null, note: '순위 (1부터). Top 100만 기록']
+  user_id        bigint    [not null, ref: > users.id, note: '해당 순위 유저 FK']
+  total_hold_ms  bigint    [not null, note: '스냅샷 시점의 누적 보유 시간']
+  captured_at    timestamp [not null, note: '스냅샷 시각 (5분 경계로 truncate됨)']
+
+  indexes {
+    (event_id, rank_no, captured_at) [pk]
+    (event_id, captured_at)          [note: '최신 스냅샷 조회 (DESC 정렬)']
+  }
+}
+
+// 시상 (finalize 시 계산, 이벤트당 최대 3개 row)
+// "수상자 없음"은 row 부재로 표현 (user_id NOT NULL 유지).
+// 예: 아무도 찬탈 안 한 이벤트면 LAST_KING row 없음 → summary.awards.lastKing = null
+Table event_awards {
+  event_id    bigint     [not null, ref: > events.id, note: '이벤트 FK']
+  award_type  award_type [not null, note: '시상 종류 3종']
+  user_id     bigint     [not null, ref: > users.id, note: '수상자 FK (SYSTEM 제외 필터 적용)']
+  metric_ms   bigint     [note: 'LONGEST_REIGN / LAST_KING의 보유 시간 (ms)']
+  metric_cnt  int        [note: 'USURPER의 찬탈 성공 횟수']
+
+  indexes {
+    (event_id, award_type) [pk]
+  }
+}
