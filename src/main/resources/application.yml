@@ -63,9 +63,9 @@ management:
 # 프로젝트 고유 설정 (Day 2에서 채움)
 app:
   jwt:
-    secret: ${JWT_SECRET:}
-    access-ttl-sec: ${JWT_ACCESS_TTL_SEC:3600}
-    refresh-ttl-sec: ${JWT_REFRESH_TTL_SEC:1209600}
+    secret: ${JWT_SECRET:illchangelaterillchangelaterillchangelaterillchangelater}
+    access-ttl-sec: ${JWT_ACCESS_TTL_SEC:86400}
+#    refresh-ttl-sec: ${JWT_REFRESH_TTL_SEC:1209600}
   oauth:
     github:
       client-id: ${GITHUB_CLIENT_ID:}
