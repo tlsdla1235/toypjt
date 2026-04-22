@@ -11,16 +11,6 @@
                     source="spring.application.name" defaultValue="flag-game"/>
 
     <!-- ===================================================================
-         민감정보 마스킹 패턴
-         - Authorization 헤더의 Bearer 토큰
-         - access_token 쿼리/폼 파라미터
-         - GitHub 토큰 (gho_, ghp_ 접두어)
-         =================================================================== -->
-    <property name="MASK_BEARER" value="Bearer [A-Za-z0-9._\-]+"/>
-    <property name="MASK_TOKEN"  value="access_token=[^\s&amp;]+"/>
-    <property name="MASK_GH"     value="gh[opsu]_[A-Za-z0-9]+"/>
-
-    <!-- ===================================================================
          1) CONSOLE Appender — 개발 중엔 사람이 읽기 좋은 포맷
          =================================================================== -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
@@ -83,7 +73,6 @@
 
     <springProfile name="prod">
         <root level="INFO">
-            <appender-ref ref="CONSOLE"/>
             <appender-ref ref="ASYNC_JSON_FILE"/>
         </root>
     </springProfile>

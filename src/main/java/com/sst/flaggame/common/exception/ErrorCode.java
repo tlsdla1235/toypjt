@@ -10,7 +10,6 @@ public enum ErrorCode {
 
     // 400
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "잘못된 입력값입니다"),
-    NOT_RUNNING(HttpStatus.BAD_REQUEST, "이벤트가 진행 중이 아닙니다"),
     INVALID_EVENT_STATUS(HttpStatus.BAD_REQUEST, "잘못된 이벤트 상태 전환입니다"),
 
     // 401
@@ -29,7 +28,7 @@ public enum ErrorCode {
 
     // 409
     ALREADY_OWNER(HttpStatus.CONFLICT, "이미 왕좌를 보유하고 있습니다"),
-    LOCK_CONFLICT(HttpStatus.CONFLICT, "다른 요청이 처리 중입니다"),
+    NOT_RUNNING(HttpStatus.CONFLICT, "이벤트가 진행 중이 아닙니다"),
     EVENT_ALREADY_RUNNING(HttpStatus.CONFLICT, "이미 진행 중인 이벤트가 있습니다"),
 
     // 429
