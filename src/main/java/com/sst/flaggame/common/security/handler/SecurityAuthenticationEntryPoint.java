@@ -17,6 +17,9 @@ import java.nio.charset.StandardCharsets;
 
 @Component
 @RequiredArgsConstructor
+/*
+    보호되는 리소스에, 인증이 안된사람들에 대한 entry(jwt 없음, jwt 잘못됨)
+ */
 public class SecurityAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
     private final ObjectMapper objectMapper;
