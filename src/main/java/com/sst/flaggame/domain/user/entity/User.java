@@ -3,6 +3,7 @@ package com.sst.flaggame.domain.user.entity;
 import com.sst.flaggame.domain.user.Role;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -37,6 +38,17 @@ public class User {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    // CustomOAuth2UserService와 호환되도록 Builder 추가
+    @Builder
+    public User(Long githubId, String login, String avatarUrl, Role role) {
+        this.githubId = githubId;
+        this.login = login;
+        this.avatarUrl = avatarUrl;
+        if (role != null) {
+            this.role = role;
+        }
+    }
+
     @PrePersist
     void onCreate() {
         this.createdAt = LocalDateTime.now();
@@ -48,6 +60,11 @@ public class User {
         user.login = login;
         user.avatarUrl = avatarUrl;
         return user;
+    }
+
+    public void updateProfile(String login, String avatarUrl) {
+        this.login = login;
+        this.avatarUrl = avatarUrl;
     }
 
     public void block() {

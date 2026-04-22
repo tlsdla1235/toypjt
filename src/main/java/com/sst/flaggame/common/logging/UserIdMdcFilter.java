@@ -19,7 +19,6 @@ import java.io.IOException;
  * userId를 MDC에 주입해 구조화 로그에서 사용자 추적을 가능하게 한다.
  */
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 30)
 public class UserIdMdcFilter extends OncePerRequestFilter {
 
     private static final String MDC_USER_ID = "userId";
