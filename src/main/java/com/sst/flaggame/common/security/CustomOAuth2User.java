@@ -1,4 +1,4 @@
-package com.sst.flaggame.domain.auth.entity;
+package com.sst.flaggame.common.security;
 
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;

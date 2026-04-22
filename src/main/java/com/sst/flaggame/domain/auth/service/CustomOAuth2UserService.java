@@ -1,6 +1,6 @@
 package com.sst.flaggame.domain.auth.service;
 
-import com.sst.flaggame.domain.auth.entity.CustomOAuth2User;
+import com.sst.flaggame.common.security.CustomOAuth2User;
 import com.sst.flaggame.domain.user.Role;
 import com.sst.flaggame.domain.user.entity.User;
 import com.sst.flaggame.domain.user.repository.UserRepository;

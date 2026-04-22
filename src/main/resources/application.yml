@@ -16,6 +16,15 @@ spring:
       connection-timeout: 2000
       pool-name: FlagGameHikariPool
 
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: ${GITHUB_CLIENT_ID}
+            client-secret: ${GITHUB_CLIENT_SECRET}
+            scope: read:user
+
   jpa:
     hibernate:
       ddl-auto: validate   # 스키마는 Flyway가 관리. Hibernate는 검증만 한다.
@@ -29,6 +38,7 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+    repair-on-migrate: true
     locations: classpath:db/migration
 
 server:
@@ -66,10 +76,6 @@ app:
     secret: ${JWT_SECRET:illchangelaterillchangelaterillchangelaterillchangelater}
     access-ttl-sec: ${JWT_ACCESS_TTL_SEC:86400}
 #    refresh-ttl-sec: ${JWT_REFRESH_TTL_SEC:1209600}
-  oauth:
-    github:
-      client-id: ${GITHUB_CLIENT_ID:}
-      client-secret: ${GITHUB_CLIENT_SECRET:}
 
 ---
 # prod 프로파일 오버라이드 (배포 환경)
