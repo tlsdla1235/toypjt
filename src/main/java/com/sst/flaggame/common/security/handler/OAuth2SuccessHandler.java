@@ -1,12 +1,13 @@
-package com.sst.flaggame.common.security;
+package com.sst.flaggame.common.security.handler;
 
+import com.sst.flaggame.common.security.CustomOAuth2User;
+import com.sst.flaggame.common.security.JwtProvider;
 import com.sst.flaggame.domain.user.Role;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
@@ -20,8 +21,12 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
     private final JwtProvider jwtProvider;
 
-    @Value("${app.frontend.url:http://localhost:5173}") // 프론트엔드 URL 주입
-    private String frontendUrl;
+    /*
+       프론트엔드 URL 주입 나중에 프론트 엔드 작업할때 살릴 예정. 지금은 개발 과정
+     */
+
+//    @Value("${app.frontend.url:http://localhost:5173}")
+//    private String frontendUrl;
 
 //    @Override
 //    public void onAuthenticationSuccess(HttpServletRequest request,

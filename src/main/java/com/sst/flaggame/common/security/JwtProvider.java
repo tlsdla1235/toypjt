@@ -17,21 +17,26 @@ import java.util.Date;
 @Component
 @Slf4j
 public class JwtProvider {
+
+    private static final String ACCESS_TOKEN_TYPE = "ACCESS";
+    private static final String CLAIM_TYPE = "type";
+    private static final String CLAIM_ROLE = "role";
+
     private final SecretKey secretKey;
     private final long accessTokenExpiry;
 
     public JwtProvider(@Value("${app.jwt.secret}") String secret,
-                            @Value("${app.jwt.access-ttl-sec}") long accessTokenExpiry) {
+                       @Value("${app.jwt.access-ttl-sec}") long accessTokenExpiry) {
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-        this.accessTokenExpiry=accessTokenExpiry;
+        this.accessTokenExpiry = accessTokenExpiry;
     }
 
     private String generateToken(Long userId, long expiry, String tokenType, Role role) {
         Date now = new Date();
         return Jwts.builder()
-                .subject(String.valueOf(userId)) //누구의 토큰인가
-                .claim("type", tokenType) //AT, RT 구분
-                .claim("role", role.getKey())
+                .subject(String.valueOf(userId))
+                .claim(CLAIM_TYPE, tokenType)
+                .claim(CLAIM_ROLE, role.name())
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + expiry * 1000))
                 .signWith(secretKey)
@@ -39,29 +44,38 @@ public class JwtProvider {
     }
 
     public String generateAT(Long userId, Role role) {
-        return generateToken(userId, accessTokenExpiry, "ACCESS", role);
+        return generateToken(userId, accessTokenExpiry, ACCESS_TOKEN_TYPE, role);
     }
 
-    public long getUserId(String token) {
+    public Long getUserId(String token) {
         Claims claim = parseClaims(token);
         return Long.parseLong(claim.getSubject());
     }
 
     public String getRole(String token) {
         Claims claim = parseClaims(token);
-        return claim.get("role", String.class);
+        return claim.get(CLAIM_ROLE, String.class);
     }
 
-    public boolean validate(String token) {
+    public boolean validateAccessToken(String token) {
         try {
-            parseClaims(token);
+            Claims claims = parseClaims(token);
+            String tokenType = claims.get(CLAIM_TYPE, String.class);
+            if (!ACCESS_TOKEN_TYPE.equals(tokenType)) {
+                log.warn("ACCESS 토큰이 아닙니다. type={}", tokenType);
+                return false;
+            }
             return true;
         } catch (ExpiredJwtException e) {
             log.warn("만료된 토큰입니다");
-        } catch (JwtException e) {
+        } catch (JwtException | IllegalArgumentException e) {
             log.warn("유효하지 않은 토큰입니다: {}", e.getMessage());
         }
         return false;
+    }
+
+    public boolean validate(String token) {
+        return validateAccessToken(token);
     }
 
     private Claims parseClaims(String token) {

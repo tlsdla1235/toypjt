@@ -20,8 +20,10 @@ import java.util.UUID;
  * -들어오는 X-Request-Id 헤더가 있으면 그 값을 사용. 없으면 8자리 uuid를 생성
  *
  * @Order(HIGHEST_PRECEDENCE + 10) 를 하여, 최대한 앞에서 실행하도록 하여, security filter보다 앞에서 실행.
+ *
  * 인증 실패시에도 requestId가 붙음
  */
+//todo userMDC와 마찬가지로 일관성 있게 order를 쓰는게 아니라, security config 뒤에 붙이기
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
 public class LogContextFilter extends OncePerRequestFilter {
@@ -44,7 +46,7 @@ public class LogContextFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
         } finally {
             //다음 request에 requestId가 오염 되지 않기 위해
-            MDC.clear();
+            MDC.remove(MDC_REQUEST_ID);
         }
     }
 }

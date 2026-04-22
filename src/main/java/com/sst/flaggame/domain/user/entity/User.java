@@ -1,11 +1,13 @@
 package com.sst.flaggame.domain.user.entity;
 
+import com.sst.flaggame.common.entity.DeletedAtConverter;
 import com.sst.flaggame.domain.user.Role;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SoftDelete;
 
 import java.time.LocalDateTime;
 
@@ -13,6 +15,7 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "users")
+@SoftDelete(columnName = "deleted_at", converter = DeletedAtConverter.class)
 public class User {
 
     @Id

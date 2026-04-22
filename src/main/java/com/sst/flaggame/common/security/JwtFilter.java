@@ -19,7 +19,7 @@ import java.util.List;
 @Slf4j
 @RequiredArgsConstructor
 public class JwtFilter extends OncePerRequestFilter {
-    private final JwtProvider jwtTokenProvider;
+    private final JwtProvider jwtProvider;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -28,15 +28,17 @@ public class JwtFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String token = resolveToken(request);
 
-        if(token !=null && jwtTokenProvider.validate(token)) {
-            Long userId = jwtTokenProvider.getUserId(token);
-            String role = jwtTokenProvider.getRole(token);
+        if (token != null && jwtProvider.validateAccessToken(token)) {
+            Long userId = jwtProvider.getUserId(token);
+            String role = jwtProvider.getRole(token);
 
             AppUserPrincipal principal = new AppUserPrincipal(userId, role);
             UsernamePasswordAuthenticationToken authenticationToken =
-                    new UsernamePasswordAuthenticationToken(principal,
+                    new UsernamePasswordAuthenticationToken(
+                            principal,
                             null,
-                            List.of(new SimpleGrantedAuthority("ROLE_" + role)));
+                            List.of(new SimpleGrantedAuthority("ROLE_" + role))
+                    );
 
             SecurityContextHolder.getContext().setAuthentication(authenticationToken);
         }
@@ -44,7 +46,7 @@ public class JwtFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    //일단 jwt에 쿠키를 안쓰고, 나중에 쿠키에 담든 하는 걸로 수정. 지금 Bearer 헤더에 넣는건 의도된 바
+    // Bearer 헤더 기반 인증(의도임) 추후에 나중에 생각나거나 필요성을 느끼면 jwt토큰을 쿠키에 담는걸로 교체 하겠음
     private String resolveToken(HttpServletRequest request) {
         String bearer = request.getHeader("Authorization");
         if (bearer != null && bearer.startsWith("Bearer ")) {
