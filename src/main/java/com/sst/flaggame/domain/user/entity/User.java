@@ -7,15 +7,19 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.SoftDelete;
-
 import java.time.LocalDateTime;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "users")
-@SoftDelete(columnName = "deleted_at", converter = DeletedAtConverter.class)
+
+// hibernate 이슈인듯? softdelte값을 boolean에서 timedate로 coevert를 하면 오류가 발생한다는 거 같다는 이슈가 보고됨
+@SQLDelete(sql = "UPDATE users SET deleted_at = NOW() WHERE id = ?")
+@SQLRestriction("deleted_at IS NULL")
 public class User {
 
     @Id
@@ -41,7 +45,9 @@ public class User {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    // CustomOAuth2UserService와 호환되도록 Builder 추가
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @Builder
     public User(Long githubId, String login, String avatarUrl, Role role) {
         this.githubId = githubId;
@@ -55,14 +61,6 @@ public class User {
     @PrePersist
     void onCreate() {
         this.createdAt = LocalDateTime.now();
-    }
-
-    public static User ofGitHub(long githubId, String login, String avatarUrl) {
-        User user = new User();
-        user.githubId = githubId;
-        user.login = login;
-        user.avatarUrl = avatarUrl;
-        return user;
     }
 
     public void updateProfile(String login, String avatarUrl) {
@@ -80,5 +78,9 @@ public class User {
 
     public void promoteToAdmin() {
         this.role = Role.ADMIN;
+    }
+
+    public boolean isDeleted() {
+        return this.deletedAt != null;
     }
 }
