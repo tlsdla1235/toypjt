@@ -1,5 +1,8 @@
 package com.sst.flaggame.domain.event.entity;
 
 public enum EventStatus {
-    DRAFT,RUNNING,ENDED,FINALIZED
+    DRAFT,
+    RUNNING,
+    ENDED,
+    FINALIZED
 }

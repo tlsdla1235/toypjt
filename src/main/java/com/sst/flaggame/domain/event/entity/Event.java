@@ -1,5 +1,8 @@
 package com.sst.flaggame.domain.event.entity;
 
+import com.sst.flaggame.common.exception.BusinessException;
+import com.sst.flaggame.common.exception.ErrorCode;
+import com.sst.flaggame.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -15,7 +18,7 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@SQLDelete(sql = "UPDATE users SET deleted_at = NOW() WHERE id = ?")
+@SQLDelete(sql = "UPDATE events SET deleted_at = NOW() WHERE id = ?")
 @SQLRestriction("deleted_at IS NULL")
 public class Event {
 
@@ -24,18 +27,15 @@ public class Event {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "name", nullable = false, length = 120)
+    @Column(name = "name", nullable = false, length = 128)
     private String name;
 
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
     private EventStatus status = EventStatus.DRAFT;
 
-    @Column(name = "description", columnDefinition = "TEXT")
-    private String description;
-
     @Column(name = "cooldown_ms", nullable = false)
-    private Long cooldownMs = 3000L;
+    private Integer cooldownMs = 3000;
 
     @Column(name = "duration_h", nullable = false)
     private Integer durationH;
@@ -52,15 +52,22 @@ public class Event {
     @Column(name = "finalized_at")
     private LocalDateTime finalizedAt;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "created_by", nullable = false)
+    private User createdBy;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @Builder
-    public Event(String name, String description, Long cooldownMs, Integer durationH) {
+    public Event(String name, Integer cooldownMs, Integer durationH, User createdBy) {
         this.name = name;
-        this.description = description;
         if (cooldownMs != null) this.cooldownMs = cooldownMs;
         this.durationH = durationH;
+        this.createdBy = createdBy;
     }
 
     @PrePersist
@@ -68,19 +75,28 @@ public class Event {
         this.createdAt = LocalDateTime.now();
     }
 
-    public void start() {
+    public void start(LocalDateTime now) {
+        if (this.status != EventStatus.DRAFT) {
+            throw new BusinessException(ErrorCode.INVALID_EVENT_STATUS);
+        }
         this.status = EventStatus.RUNNING;
-        this.startedAt = LocalDateTime.now();
+        this.startedAt = now;
         this.endsAt = this.startedAt.plusHours(this.durationH);
     }
 
-    public void end() {
+    public void end(LocalDateTime now) {
+        if (this.status != EventStatus.RUNNING) {
+            throw new BusinessException(ErrorCode.INVALID_EVENT_STATUS);
+        }
         this.status = EventStatus.ENDED;
-        this.endedAt = LocalDateTime.now();
+        this.endedAt = now;
     }
 
-    public void finalize_() {
+    public void finalize_(LocalDateTime now) {
+        if (this.status != EventStatus.ENDED) {
+            throw new BusinessException(ErrorCode.INVALID_EVENT_STATUS);
+        }
         this.status = EventStatus.FINALIZED;
-        this.finalizedAt = LocalDateTime.now();
+        this.finalizedAt = now;
     }
 }
