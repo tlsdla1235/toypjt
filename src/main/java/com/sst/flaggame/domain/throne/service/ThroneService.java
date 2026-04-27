@@ -15,8 +15,8 @@ import com.sst.flaggame.domain.throne.repository.ThroneClaimRepository;
 import com.sst.flaggame.domain.throne.repository.ThroneReignRepository;
 import com.sst.flaggame.domain.user.entity.User;
 import com.sst.flaggame.domain.user.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Service
+@RequiredArgsConstructor
 public class ThroneService {
 
     private final EventRepository eventRepository;
@@ -41,24 +42,6 @@ public class ThroneService {
 
     private final ConcurrentHashMap<Long, ThroneState> throneMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, ReentrantLock> lockMap = new ConcurrentHashMap<>();
-
-    public ThroneService(
-            EventRepository eventRepository,
-            UserRepository userRepository,
-            ThroneReignRepository throneReignRepository,
-            CurrentThroneRepository currentThroneRepository,
-            CooldownRepository cooldownRepository,
-            ThroneClaimRepository throneClaimRepository,
-            PlatformTransactionManager transactionManager
-    ) {
-        this.eventRepository = eventRepository;
-        this.userRepository = userRepository;
-        this.throneReignRepository = throneReignRepository;
-        this.currentThroneRepository = currentThroneRepository;
-        this.cooldownRepository = cooldownRepository;
-        this.throneClaimRepository = throneClaimRepository;
-        this.transactionTemplate = new TransactionTemplate(transactionManager);
-    }
 
     public ClaimResponse claim(Long eventId, Long userId) {
         LocalDateTime now = LocalDateTime.now();
