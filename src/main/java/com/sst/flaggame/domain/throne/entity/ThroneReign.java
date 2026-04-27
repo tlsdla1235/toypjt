@@ -7,6 +7,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Entity
@@ -40,5 +41,13 @@ public class ThroneReign {
         this.event = event;
         this.user = user;
         this.startedAt = startedAt;
+    }
+
+    public void close(LocalDateTime endedAt) {
+        if (this.endedAt != null) {
+            throw new IllegalStateException("Throne reign is already closed.");
+        }
+        this.endedAt = endedAt;
+        this.durationMs = Duration.between(this.startedAt, endedAt).toMillis();
     }
 }

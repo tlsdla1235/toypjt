@@ -41,4 +41,10 @@ public class CurrentThrone {
         this.user = user;
         this.heldSince = heldSince;
     }
+
+    public void update(ThroneReign newReign, User newUser, LocalDateTime now) {
+        this.reign = newReign;
+        this.user = newUser;
+        this.heldSince = now;
+    }
 }
