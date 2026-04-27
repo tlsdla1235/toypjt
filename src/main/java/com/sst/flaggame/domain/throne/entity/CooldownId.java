@@ -3,6 +3,10 @@ package com.sst.flaggame.domain.throne.entity;
 import java.io.Serializable;
 import java.util.Objects;
 
+/**
+ * cooldown 테이블의 복합 key를 해결하기 위한 테이블
+ */
+
 public class CooldownId implements Serializable {
 
     private Long eventId;

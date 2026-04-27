@@ -7,6 +7,12 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+
+/*
+    append only테이블이며,
+    핫스팟 지점 중 하나임.
+    그런 이유로, 일부로 fk제약을 제거
+ */
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

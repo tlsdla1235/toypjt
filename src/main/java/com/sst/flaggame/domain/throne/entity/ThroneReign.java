@@ -10,6 +10,11 @@ import lombok.NoArgsConstructor;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
+
+/**
+ * flag 보유 이력 테이블
+ */
+
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -41,13 +46,5 @@ public class ThroneReign {
         this.event = event;
         this.user = user;
         this.startedAt = startedAt;
-    }
-
-    public void close(LocalDateTime endedAt) {
-        if (this.endedAt != null) {
-            throw new IllegalStateException("Throne reign is already closed.");
-        }
-        this.endedAt = endedAt;
-        this.durationMs = Duration.between(this.startedAt, endedAt).toMillis();
     }
 }
