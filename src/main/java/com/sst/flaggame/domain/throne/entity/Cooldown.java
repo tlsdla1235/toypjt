@@ -36,12 +36,8 @@ public class Cooldown {
         this.expiresAt = expiresAt;
     }
 
-    public boolean isActiveAt(LocalDateTime now) {
-        return expiresAt.isAfter(now);
-    }
-
     public long remainingMs(LocalDateTime now) {
-        if (!isActiveAt(now)) {
+        if (!expiresAt.isAfter(now)) {
             return 0L;
         }
         return Duration.between(now, expiresAt).toMillis();
