@@ -5,7 +5,6 @@ public record ClaimResponse(
         Long reignId,
         Long remainingMs
 ) {
-
     public static ClaimResponse success(Long reignId) {
         return new ClaimResponse("SUCCESS", reignId, null);
     }

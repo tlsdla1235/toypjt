@@ -22,6 +22,13 @@ public class ThroneController {
     private final EventService eventService;
     private final ThroneService throneService;
 
+
+
+    /*
+        claim에 body등을 받지 않는 이유가,
+        어처피 event id에 대해 검증을 (유효한 event인지) 해야하기때문에 차라리 이렇게 설계하는게 낫다고 판단함
+        또, 이 조회는 db조회가 아니라, 메모리에 있는 값을 읽는거라 매우 쌈
+     */
     @PostMapping("/claim")
     public ResponseEntity<ApiResponse<ClaimResponse>> claim(
             @AuthenticationPrincipal AppUserPrincipal principal

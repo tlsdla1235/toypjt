@@ -25,6 +25,16 @@ public class ErrorResponse {
                 );
     }
 
+    //remaning 을 알려주기 위해 새로운 생성자 생성
+    /*
+        {
+            "status": 429,
+            "code": "COOLDOWN",
+            "message": "쿨타임 중입니다",
+            "remainingMs": 1234
+         }
+
+     */
     public static ResponseEntity<ErrorResponse> toResponseEntity(ErrorCode errorCode, Long remainingMs){
         return ResponseEntity
                 .status(errorCode.getStatus())
