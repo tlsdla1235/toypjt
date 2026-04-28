@@ -70,6 +70,9 @@ class ThroneServiceTest {
     @Mock
     private ThroneClaimRepository throneClaimRepository;
 
+    @Mock
+    private AggregationCache aggregationCache;
+
     private ThroneService throneService;
 
     @BeforeEach
@@ -85,7 +88,8 @@ class ThroneServiceTest {
                 currentThroneRepository,
                 cooldownRepository,
                 throneClaimRepository,
-                new TransactionTemplate(transactionManager)
+                new TransactionTemplate(transactionManager),
+                aggregationCache
         );
     }
 
@@ -180,6 +184,8 @@ class ThroneServiceTest {
 
         verify(throneReignRepository).closeOpenReign(eq(103L), any(LocalDateTime.class), any(Long.class));
         verify(cooldownRepository).upsert(eq(eventId), eq(userId), any(LocalDateTime.class));
+        verify(aggregationCache).addReignEnd(eq(eventId), eq(99L), any(Long.class));
+        verify(aggregationCache).addClaimSuccess(eventId, userId);
 
         ArgumentCaptor<ThroneClaim> captor = ArgumentCaptor.forClass(ThroneClaim.class);
         verify(throneClaimRepository).save(captor.capture());
@@ -191,6 +197,24 @@ class ThroneServiceTest {
         assertThat(throneMap).containsKey(eventId);
         assertThat(throneMap.get(eventId).currentKingId()).isEqualTo(userId);
         assertThat(throneMap.get(eventId).reignId()).isEqualTo(200L);
+    }
+
+    @Test
+    void claimWhenFailureThenDoesNotCallAggregationCache() {
+        Long eventId = 14L;
+        Long userId = 2L;
+        setupCurrentThrone(eventId, createCurrentThrone(eventId, userId, 104L));
+        when(cooldownRepository.findActive(eq(eventId), eq(userId), any(LocalDateTime.class)))
+                .thenReturn(Optional.empty());
+        when(eventRepository.findById(eventId)).thenReturn(Optional.of(createRunningEvent(10_000)));
+
+        assertThatThrownBy(() -> throneService.claim(eventId, userId))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.ALREADY_OWNER);
+
+        verify(aggregationCache, org.mockito.Mockito.never()).addReignEnd(any(), any(), any(Long.class));
+        verify(aggregationCache, org.mockito.Mockito.never()).addClaimSuccess(any(), any());
     }
 
     private void setupCurrentThrone(Long eventId, CurrentThrone currentThrone) {

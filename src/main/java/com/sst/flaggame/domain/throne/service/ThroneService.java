@@ -39,6 +39,7 @@ public class ThroneService {
     private final CooldownRepository cooldownRepository;
     private final ThroneClaimRepository throneClaimRepository;
     private final TransactionTemplate transactionTemplate;
+    private final AggregationCache aggregationCache;
 
     private final ConcurrentHashMap<Long, ThroneState> throneMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, ReentrantLock> lockMap = new ConcurrentHashMap<>();
@@ -136,7 +137,11 @@ public class ThroneService {
         throneClaimRepository.save(new ThroneClaim(eventId, userId, ThroneClaimResult.SUCCESS, now));
 
         ThroneState nextState = new ThroneState(userId, newReign.getId(), now);
-        runAfterCommit(() -> throneMap.put(eventId, nextState));
+        runAfterCommit(() -> {
+            throneMap.put(eventId, nextState);
+            aggregationCache.addReignEnd(eventId, currentState.currentKingId(), heldMs);
+            aggregationCache.addClaimSuccess(eventId, userId);
+        });
 
         return ClaimOutcome.success(newReign.getId());
     }
