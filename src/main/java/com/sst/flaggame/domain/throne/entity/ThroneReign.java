@@ -7,7 +7,13 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+
+
+/**
+ * flag 보유 이력 테이블
+ */
 
 @Entity
 @Getter

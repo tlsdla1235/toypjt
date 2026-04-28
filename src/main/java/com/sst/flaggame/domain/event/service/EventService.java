@@ -9,6 +9,7 @@ import com.sst.flaggame.domain.event.entity.EventStatus;
 import com.sst.flaggame.domain.event.repository.EventRepository;
 import com.sst.flaggame.domain.throne.entity.CurrentThrone;
 import com.sst.flaggame.domain.throne.entity.ThroneReign;
+import com.sst.flaggame.domain.throne.service.ThroneService;
 import com.sst.flaggame.domain.throne.repository.CurrentThroneRepository;
 import com.sst.flaggame.domain.throne.repository.ThroneReignRepository;
 import com.sst.flaggame.domain.user.entity.User;
@@ -34,14 +35,17 @@ public class EventService {
     private final UserRepository userRepository;
     private final ThroneReignRepository throneReignRepository;
     private final CurrentThroneRepository currentThroneRepository;
+    private final ThroneService throneService;
     private final AtomicReference<Long> currentActiveEventId = new AtomicReference<>();
 
     @PostConstruct
-    @Transactional(readOnly = true)
     public void restoreRunningEventOnStartup() {
         eventRepository.findFirstByStatus(EventStatus.RUNNING)
                 .map(Event::getId)
-                .ifPresent(currentActiveEventId::set);
+                .ifPresent(eventId -> {
+                    currentActiveEventId.set(eventId);
+                    throneService.restoreRunningEvent(eventId);
+                });
     }
 
     @Transactional
@@ -70,7 +74,10 @@ public class EventService {
         LocalDateTime now = LocalDateTime.now();
         event.start(now);
         createInitialThrone(event, now);
-        runAfterCommit(() -> currentActiveEventId.set(event.getId()));
+        runAfterCommit(() -> {
+            currentActiveEventId.set(event.getId());
+            throneService.initForEvent(event.getId());
+        });
 
         return EventResponse.from(event);
     }
@@ -80,7 +87,10 @@ public class EventService {
         Event event = findEvent(eventId);
         LocalDateTime now = LocalDateTime.now();
         event.end(now);
-        runAfterCommit(() -> currentActiveEventId.compareAndSet(event.getId(), null));
+        runAfterCommit(() -> {
+            currentActiveEventId.compareAndSet(event.getId(), null);
+            throneService.endEvent(event.getId());
+        });
 
         return EventResponse.from(event);
     }
@@ -89,7 +99,10 @@ public class EventService {
     public EventResponse finalizeEvent(Long eventId) {
         Event event = findEvent(eventId);
         event.finalize_(LocalDateTime.now());
-        runAfterCommit(() -> currentActiveEventId.compareAndSet(event.getId(), null));
+        runAfterCommit(() -> {
+            currentActiveEventId.compareAndSet(event.getId(), null);
+            throneService.finalizeEvent(event.getId());
+        });
 
         return EventResponse.from(event);
     }
@@ -104,7 +117,10 @@ public class EventService {
 
         expiredEvents.forEach(event -> {
             event.end(now);
-            runAfterCommit(() -> currentActiveEventId.compareAndSet(event.getId(), null));
+            runAfterCommit(() -> {
+                currentActiveEventId.compareAndSet(event.getId(), null);
+                throneService.endEvent(event.getId());
+            });
         });
 
         return expiredEvents.size();

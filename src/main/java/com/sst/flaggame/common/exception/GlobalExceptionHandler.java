@@ -19,6 +19,12 @@ public class GlobalExceptionHandler {
         return ErrorResponse.toResponseEntity(e.getErrorCode());
     }
 
+    @ExceptionHandler(CooldownException.class)
+    protected ResponseEntity<ErrorResponse> handleCooldownException(CooldownException e) {
+        log.warn("CooldownException: remainingMs={}", e.getRemainingMs());
+        return ErrorResponse.toResponseEntity(ErrorCode.COOLDOWN, e.getRemainingMs());
+    }
+
     // @Valid 검증 실패
     @ExceptionHandler(MethodArgumentNotValidException.class)
     protected ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException e) {

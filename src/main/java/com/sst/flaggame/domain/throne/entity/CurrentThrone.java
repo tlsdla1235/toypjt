@@ -9,6 +9,10 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+
+/**
+ * 한 이벤트에 대해, 현재의 왕에 대한 기록
+ */
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -40,5 +44,11 @@ public class CurrentThrone {
         this.reign = reign;
         this.user = user;
         this.heldSince = heldSince;
+    }
+
+    public void update(ThroneReign newReign, User newUser, LocalDateTime now) {
+        this.reign = newReign;
+        this.user = newUser;
+        this.heldSince = now;
     }
 }

@@ -7,76 +7,83 @@
 - DB 상태, 메모리 상태, 감사 로그가 한 흐름으로 정합성을 유지해야 한다.
 
 ## Scope For Today
-- [ ] `POST /api/events/active/claim` API 작성
-- [ ] `ThroneService.claim()` 작성
-- [ ] 이벤트별 `ReentrantLock(true)` 적용
-- [ ] `TransactionTemplate` 기반 찬탈 트랜잭션 작성
-- [ ] `throneMap`, `lockMap` 도입
-- [ ] 현재 왕 / 본인 여부 / 쿨타임 판정 로직 작성
-- [ ] reign 종료 + 신규 reign 생성 + `current_throne` 갱신 작성
-- [ ] `cooldowns` upsert 작성
-- [ ] `throne_claims` 감사 로그 기록 작성
-- [ ] 성공 시 afterCommit 기반 메모리 상태 갱신 작성
+- [x] `POST /api/events/active/claim` API 작성
+- [x] `ThroneService.claim()` 작성
+- [x] 이벤트별 `ReentrantLock(true)` 적용
+- [x] `TransactionTemplate` 기반 찬탈 트랜잭션 작성
+- [x] `throneMap`, `lockMap` 도입
+- [x] `EventService.start/end/finalize`에 `throneMap` 초기화/정리 연결
+- [x] 현재 왕 / 본인 여부 / 쿨타임 판정 로직 작성
+- [x] reign 종료 + 신규 reign 생성 + `current_throne` 갱신 작성
+- [x] `cooldowns` upsert 작성
+- [x] `throne_claims` 감사 로그 기록 작성
+- [x] 성공 시 afterCommit 기반 메모리 상태 갱신 작성
 
 ## What Should Be Implemented
 
 ### 1. Claim entrypoint
-- [ ] `POST /api/events/active/claim` 컨트롤러 작성
-- [ ] `currentActiveEventId == null` 이면 즉시 `NO_ACTIVE_EVENT`
-- [ ] 컨트롤러에서 활성 이벤트 ID를 가져와 `throneService.claim(eventId, userId)` 호출
+- [x] `POST /api/events/active/claim` 컨트롤러 작성
+- [x] `currentActiveEventId == null` 이면 즉시 `NO_ACTIVE_EVENT`
+- [x] 컨트롤러에서 활성 이벤트 ID를 가져와 `throneService.claim(eventId, userId)` 호출
 
 ### 2. Throne in-memory state
-- [ ] `ThroneState` immutable record 작성
-- [ ] `throneMap: ConcurrentHashMap<Long, ThroneState>` 작성
-- [ ] `lockMap: ConcurrentHashMap<Long, ReentrantLock>` 작성
-- [ ] Day 3의 이벤트 시작/종료/finalize 흐름과 메모리 상태를 연결
+- [x] `ThroneState` immutable record 작성
+- [x] `ThroneState = record(Long currentKingId, Long reignId, LocalDateTime heldSince)` 기준으로 필드 정의
+- [x] `throneMap: ConcurrentHashMap<Long, ThroneState>` 작성
+- [x] `lockMap: ConcurrentHashMap<Long, ReentrantLock>` 작성
+- [x] Day 3의 이벤트 시작/종료/finalize 흐름과 메모리 상태를 연결
+- [x] `EventService.start()` / `end()` / `finalize()` 에서 `ThroneService.initForEvent(eventId)` / `cleanupForEvent(eventId)` 를 직접 호출해 단방향 의존 유지
 
 ### 3. Claim transaction flow
-- [ ] 락 바깥 쿨타임 선체크 추가
-- [ ] 단, 선체크는 fast-fail 하지 않고 힌트용으로만 사용
-- [ ] `ReentrantLock(true)` 로 이벤트별 락 획득
-- [ ] `TransactionTemplate` 내부에서 `doClaim()` 수행
-- [ ] 판정 순서를 `NOT_RUNNING -> ALREADY_OWNER -> COOLDOWN -> SUCCESS` 로 유지
+- [x] 락 바깥 쿨타임 선체크 추가
+- [x] 단, 선체크는 fast-fail 하지 않고 힌트용으로만 사용
+- [x] 쿨타임 선체크는 `throneMap`이 아닌 `cooldowns` DB 단순 조회로 처리
+- [x] `ReentrantLock(true)` 로 이벤트별 락 획득
+- [x] `TransactionTemplate` 내부에서 `doClaim()` 수행
+- [x] 판정 순서를 `NOT_RUNNING -> ALREADY_OWNER -> COOLDOWN -> SUCCESS` 로 유지
 
 ### 4. Persistence updates
-- [ ] 현재 열린 reign 종료 (`ended_at`, `duration_ms`)
-- [ ] 신규 reign 생성
-- [ ] `current_throne` 갱신
-- [ ] `cooldowns` upsert
-- [ ] 감사 로그 저장
+- [x] 현재 열린 reign 종료 (`ended_at`, `duration_ms`)
+- [x] 신규 reign 생성
+- [x] `current_throne` 갱신
+- [x] `cooldowns` upsert
+- [x] 감사 로그 저장
 
 ### 5. afterCommit updates
-- [ ] 성공 시 `throneMap` 갱신을 afterCommit으로 이동
+- [x] 성공 시 `throneMap` 갱신을 afterCommit으로 이동
 - [ ] 성공 로그도 afterCommit에서 기록
-- [ ] 롤백 시 메모리 상태가 바뀌지 않도록 유지
+- [x] 롤백 시 메모리 상태가 바뀌지 않도록 유지
 
 ## Required Domain / Infra Pieces
 
 ### Entities / repositories likely needed
-- [ ] `Cooldown` 엔티티 및 리포지토리
-- [ ] `ThroneClaim` 엔티티 및 리포지토리
-- [ ] `ThroneReignRepository`에 close/open 작업 메서드 추가
-- [ ] `CurrentThroneRepository`에 update 또는 save 전략 정리
+- [x] `Cooldown` 엔티티 및 리포지토리
+- [x] `ThroneClaim` 엔티티 및 리포지토리
+- [x] `ThroneReign.close(LocalDateTime endedAt)` 메서드 추가
+- [x] `CurrentThrone.update(ThroneReign newReign, User newUser, LocalDateTime now)` 메서드 추가
+- [x] `ThroneReignRepository`에 close/open 작업 메서드 추가
+- [x] `CurrentThroneRepository`에 update 또는 save 전략 정리
 
 ### Service support
-- [ ] `TransactionTemplate` 빈 준비 또는 주입 방식 결정
-- [ ] claim 결과 응답 DTO 작성 (`SUCCESS`, `remainingMs`, `reignId` 등)
-- [ ] 예외/에러코드 매핑 정리
+- [x] `TransactionTemplate` 빈 준비 또는 주입 방식 결정
+- [x] claim 결과 응답 DTO 작성 (`SUCCESS`, `remainingMs`, `reignId` 등)
+- [x] 예외/에러코드 매핑 정리
+- [x] `EventService -> ThroneService` 단방향 호출 구조로 이벤트 시작/종료/finalize 시 메모리 초기화/정리 연결
 
 ## Behavior Rules To Keep
-- [ ] RUNNING 이벤트가 없으면 `404 NO_ACTIVE_EVENT`
-- [ ] 본인이 현재 왕이면 `409 ALREADY_OWNER`
-- [ ] 쿨타임 중이면 `429 COOLDOWN`
-- [ ] 락 대기 중 이벤트가 종료되면 `409 NOT_RUNNING`
-- [ ] 성공 시 이전 왕의 reign 종료 시간이 기록된다
-- [ ] 성공 시 새 reign이 열린다
-- [ ] 성공 시 `current_throne`가 새 왕으로 바뀐다
-- [ ] 성공 시 새 왕에게 쿨타임이 설정된다
+- [x] RUNNING 이벤트가 없으면 `404 NO_ACTIVE_EVENT`
+- [x] 본인이 현재 왕이면 `409 ALREADY_OWNER`
+- [x] 쿨타임 중이면 `429 COOLDOWN`
+- [x] 락 대기 중 이벤트가 종료되면 `409 NOT_RUNNING`
+- [x] 성공 시 이전 왕의 reign 종료 시간이 기록된다
+- [x] 성공 시 새 reign이 열린다
+- [x] 성공 시 `current_throne`가 새 왕으로 바뀐다
+- [x] 성공 시 새 왕에게 쿨타임이 설정된다
 
 ## Verification Checklist For Today
 
 ### Build / compile
-- [ ] `./gradlew compileJava` 성공
+- [x] `./gradlew compileJava` 성공
 
 ### API / behavior
 - [ ] RUNNING 이벤트가 없을 때 `claim`이 `NO_ACTIVE_EVENT`를 반환한다
