@@ -43,13 +43,26 @@ public class ThroneService {
     private final ConcurrentHashMap<Long, ThroneState> throneMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, ReentrantLock> lockMap = new ConcurrentHashMap<>();
 
+    /*
+        1. 현재 시각을 구한다
+        2. 쿨타임 선체크를 한다
+        3. 이벤트별 락을 꺼내거나 새로 만든다
+        4. 락을 건다
+        5. 트랜잭션 안에서 실제 찬탈 로직을 실행한다
+        6. 결과를 응답 객체로 바꾼다
+        7. 무조건 락을 푼다
+     */
     public ClaimResponse claim(Long eventId, Long userId) {
         LocalDateTime now = LocalDateTime.now();
+
+        // phase1에 대해서는, 선체크용 메서드. 프로메테우스를 이용한 집계용. fast-fail을 구현하기 위한 것은 아님
         cooldownRepository.findActive(eventId, userId, now);
 
         ReentrantLock lock = lockMap.computeIfAbsent(eventId, ignored -> new ReentrantLock(true));
         lock.lock();
         try {
+            //엄...
+            //requireNonNull -> null이면 예외 던짐
             ClaimOutcome outcome = Objects.requireNonNull(
                     transactionTemplate.execute(status -> doClaim(eventId, userId))
             );
@@ -79,6 +92,7 @@ public class ThroneService {
         initForEvent(eventId);
     }
 
+    //claim은 찬탈기록. (성공, 실패, 오류시 모두 기록)
     private ClaimOutcome doClaim(Long eventId, Long userId) {
         LocalDateTime now = LocalDateTime.now();
         ThroneState currentState = getOrRestoreThroneState(eventId);
@@ -86,11 +100,12 @@ public class ThroneService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.EVENT_NOT_FOUND));
 
+        // 이벤트가 없을때
         if (event.getStatus() != EventStatus.RUNNING) {
             throneClaimRepository.save(new ThroneClaim(eventId, userId, ThroneClaimResult.NOT_RUNNING, now));
             return ClaimOutcome.notRunning();
         }
-
+        // 본인이 현재 왕일때
         if (currentState.currentKingId().equals(userId)) {
             throneClaimRepository.save(new ThroneClaim(eventId, userId, ThroneClaimResult.ALREADY_OWNER, now));
             return ClaimOutcome.alreadyOwner();

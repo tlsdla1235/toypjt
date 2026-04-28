@@ -86,36 +86,36 @@
 - [x] `./gradlew compileJava` 성공
 
 ### API / behavior
-- [ ] RUNNING 이벤트가 없을 때 `claim`이 `NO_ACTIVE_EVENT`를 반환한다
-- [ ] 첫 찬탈 성공 시 `SUCCESS`를 반환한다
-- [ ] 첫 찬탈 성공 시 SYSTEM reign이 종료된다
-- [ ] 첫 찬탈 성공 시 새로운 reign이 생성된다
-- [ ] 첫 찬탈 성공 시 `current_throne.user_id`가 새 유저로 바뀐다
-- [ ] 같은 유저가 바로 다시 요청하면 `ALREADY_OWNER`가 반환된다
-- [ ] 다른 유저가 연속 요청하면 정상적으로 왕이 교체된다
-- [ ] 쿨타임 중인 유저는 `COOLDOWN`을 받는다
-- [ ] 이벤트 종료 후 `claim` 시 `NO_ACTIVE_EVENT` 또는 `NOT_RUNNING` 경로가 의도대로 동작한다
+- [x] RUNNING 이벤트가 없을 때 `claim`이 `NO_ACTIVE_EVENT`를 반환한다
+- [x] 첫 찬탈 성공 시 `SUCCESS`를 반환한다
+- [x] 첫 찬탈 성공 시 SYSTEM reign이 종료된다
+- [x] 첫 찬탈 성공 시 새로운 reign이 생성된다
+- [x] 첫 찬탈 성공 시 `current_throne.user_id`가 새 유저로 바뀐다
+- [x] 같은 유저가 바로 다시 요청하면 `ALREADY_OWNER`가 반환된다
+- [x] 다른 유저가 연속 요청하면 정상적으로 왕이 교체된다
+- [x] 쿨타임 중인 유저는 `COOLDOWN`을 받는다
+- [x] 이벤트 종료 후 `claim` 시 `NO_ACTIVE_EVENT` 또는 `NOT_RUNNING` 경로가 의도대로 동작한다
 
 ### Concurrency / lock
-- [ ] 동시에 여러 요청을 보내도 왕좌 변경이 순차 처리된다
-- [ ] 2명 이상이 거의 동시에 요청해도 열린 reign이 2개 생기지 않는다
-- [ ] `current_throne`와 `throne_reigns` 결과가 서로 모순되지 않는다
+- [x] 동시에 여러 요청을 보내도 왕좌 변경이 순차 처리된다
+- [x] 2명 이상이 거의 동시에 요청해도 열린 reign이 2개 생기지 않는다
+- [x] `current_throne`와 `throne_reigns` 결과가 서로 모순되지 않는다
 
 ### Audit / persistence
-- [ ] 성공 요청이 `throne_claims`에 기록된다
-- [ ] `COOLDOWN` 실패가 `throne_claims`에 기록된다
-- [ ] `ALREADY_OWNER` 실패가 `throne_claims`에 기록된다
-- [ ] `NOT_RUNNING` 실패가 `throne_claims`에 기록된다
-- [ ] `NO_ACTIVE_EVENT`는 DB 기록 없이 응답만 반환된다
+- [x] 성공 요청이 `throne_claims`에 기록된다
+- [x] `COOLDOWN` 실패가 `throne_claims`에 기록된다
+- [x] `ALREADY_OWNER` 실패가 `throne_claims`에 기록된다
+- [x] `NOT_RUNNING` 실패가 `throne_claims`에 기록된다
+- [x] `NO_ACTIVE_EVENT`는 DB 기록 없이 응답만 반환된다
 
 ## Human-Owned Responsibility
-- [ ] Day 3 상태에서 RUNNING 이벤트를 하나 준비한다
-- [ ] 테스트용 일반 사용자 2명 이상을 준비한다
-- [ ] 토큰을 직접 발급하거나 로그인 흐름으로 테스트 계정을 확보한다
-- [ ] API 호출 순서를 직접 기록한다
-- [ ] DB에서 `throne_reigns`, `current_throne`, `cooldowns`, `throne_claims` 변화를 직접 본다
-- [ ] 적어도 한 번은 거의 동시에 요청을 보내보며 결과를 비교한다
-- [ ] 본인이 `NOT_RUNNING`, `ALREADY_OWNER`, `COOLDOWN`의 차이를 설명할 수 있어야 한다
+- [x] Day 3 상태에서 RUNNING 이벤트를 하나 준비한다
+- [x] 테스트용 일반 사용자 2명 이상을 준비한다
+- [x] 토큰을 직접 발급하거나 로그인 흐름으로 테스트 계정을 확보한다
+- [x] API 호출 순서를 직접 기록한다
+- [x] DB에서 `throne_reigns`, `current_throne`, `cooldowns`, `throne_claims` 변화를 직접 본다
+- [x] 적어도 한 번은 거의 동시에 요청을 보내보며 결과를 비교한다
+- [x] 본인이 `NOT_RUNNING`, `ALREADY_OWNER`, `COOLDOWN`의 차이를 설명할 수 있어야 한다
 
 ## Suggested Manual Test Flow
 1. RUNNING 이벤트 1개 준비
@@ -132,14 +132,14 @@
 12. `NO_ACTIVE_EVENT` 또는 `NOT_RUNNING` 경로 확인
 
 ## Definition Of Done For Day 4
-- [ ] 찬탈 API가 동작한다
-- [ ] 현재 왕 판정이 맞다
-- [ ] 쿨타임 판정이 맞다
-- [ ] reign 종료/생성이 정합하게 기록된다
-- [ ] `current_throne`가 정확히 갱신된다
-- [ ] 메모리 상태와 DB 상태가 모순되지 않는다
-- [ ] 실패 케이스가 명세대로 응답한다
-- [ ] 본인이 락, 쿨타임, 판정 순서를 설명할 수 있다
+- [x] 찬탈 API가 동작한다
+- [x] 현재 왕 판정이 맞다
+- [x] 쿨타임 판정이 맞다
+- [x] reign 종료/생성이 정합하게 기록된다
+- [x] `current_throne`가 정확히 갱신된다
+- [x] 메모리 상태와 DB 상태가 모순되지 않는다
+- [x] 실패 케이스가 명세대로 응답한다
+- [x] 본인이 락, 쿨타임, 판정 순서를 설명할 수 있다
 
 ## Notes
 - Day 4의 핵심은 "빠른 기능 추가"보다 "정합성을 잃지 않는 최소 찬탈 흐름"이다.
