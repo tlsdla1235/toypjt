@@ -41,4 +41,11 @@ public interface CooldownRepository extends JpaRepository<Cooldown, CooldownId> 
             @Param("userId") Long userId,
             @Param("expiresAt") LocalDateTime expiresAt
     );
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            delete from Cooldown c
+            where c.expiresAt < :threshold
+            """)
+    int deleteExpired(@Param("threshold") LocalDateTime threshold);
 }

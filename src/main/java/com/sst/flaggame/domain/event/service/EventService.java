@@ -40,12 +40,7 @@ public class EventService {
 
     @PostConstruct
     public void restoreRunningEventOnStartup() {
-        eventRepository.findFirstByStatus(EventStatus.RUNNING)
-                .map(Event::getId)
-                .ifPresent(eventId -> {
-                    currentActiveEventId.set(eventId);
-                    throneService.restoreRunningEvent(eventId);
-                });
+        restoreActiveEventFromDb();
     }
 
     @Transactional
@@ -128,15 +123,32 @@ public class EventService {
 
     @Transactional(readOnly = true)
     public EventResponse getActiveEvent() {
-        Long activeEventId = currentActiveEventId.get();
+        Long activeEventId = getCurrentActiveEventId();
         if (activeEventId == null) {
             throw new BusinessException(ErrorCode.NO_ACTIVE_EVENT);
         }
-        return EventResponse.from(findEvent(activeEventId));
+        Event activeEvent = findEvent(activeEventId);
+        if (activeEvent.getStatus() == EventStatus.RUNNING) {
+            return EventResponse.from(activeEvent);
+        }
+
+        currentActiveEventId.compareAndSet(activeEventId, null);
+
+        return restoreActiveEventFromDb()
+                .map(EventResponse::from)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NO_ACTIVE_EVENT));
     }
 
+    @Transactional(readOnly = true)
     public Long getCurrentActiveEventId() {
-        return currentActiveEventId.get();
+        Long activeEventId = currentActiveEventId.get();
+        if (activeEventId != null) {
+            return activeEventId;
+        }
+
+        return restoreActiveEventFromDb()
+                .map(Event::getId)
+                .orElse(null);
     }
 
     private Event findEvent(Long eventId) {
@@ -162,5 +174,14 @@ public class EventService {
                 runnable.run();
             }
         });
+    }
+
+    private java.util.Optional<Event> restoreActiveEventFromDb() {
+        return eventRepository.findFirstByStatus(EventStatus.RUNNING)
+                .map(event -> {
+                    currentActiveEventId.set(event.getId());
+                    throneService.restoreRunningEvent(event.getId());
+                    return event;
+                });
     }
 }
