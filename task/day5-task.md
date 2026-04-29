@@ -162,7 +162,7 @@
 - [x] `SELECT * FROM event_participants WHERE user_id = 1` 결과 0행
 - [x] `SELECT * FROM leaderboard_snapshot WHERE user_id = 1` 결과 0행
 - [x] `event_participants.total_hold_ms` ≈ Σ(`throne_reigns.duration_ms` WHERE `user_id <> 1`)
-- [ ] 이벤트 종료 직전 마지막 왕의 마지막 보유 구간도 최종적으로 `event_participants`에 반영된다
+- [x] 이벤트 종료 직전 마지막 왕의 마지막 보유 구간도 최종적으로 `event_participants`에 반영된다
 
 ## Human-Owned Responsibility
 - [x] Day 4 상태에서 RUNNING 이벤트 + 일반 사용자 2명 이상 준비
@@ -172,7 +172,7 @@
 - [x] 5분 경계에 맞춰 `SELECT * FROM leaderboard_snapshot ORDER BY captured_at DESC LIMIT 200` 확인
 - [x] graceful shutdown (`Ctrl+C`로 SIGTERM, `kill -9` 금지) → 재기동 후 직전 누적분 반영 확인
 - [x] `event_participants`의 SYSTEM row 부재를 직접 SQL로 검증
-- [ ] 본인이 "왜 write-back인가, 왜 `pending.remove`인가, 왜 5분 truncate인가" 설명 가능
+- [x] 본인이 "왜 write-back인가, 왜 `pending.remove`인가, 왜 5분 truncate인가" 설명 가능
 
 ## Suggested Manual Test Flow
 1. Day 4 상태에서 RUNNING 이벤트 1개 준비
@@ -196,7 +196,7 @@
 - [x] 5분 주기 리더보드 스냅샷이 기록된다
 - [x] 동일 5분 구간 중복 호출이 PK 충돌로 조용히 skip된다
 - [x] 찬탈 핫패스(`doClaim`)가 DB 집계 UPDATE를 직접 하지 않는다
-- [ ] 본인이 흐름을 설명할 수 있다
+- [x] 본인이 흐름을 설명할 수 있다
 
 ## Notes
 - Day 5의 핵심은 "찬탈 핫패스에서 집계 쓰기를 떼어내는 것"이다.
