@@ -16,6 +16,9 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @IdClass(LeaderboardSnapshotId.class)
 @Table(name = "leaderboard_snapshot")
+// db에서는 외래키 관계로 가지고 있음
+// 불필요한 참조를 만들지 않기 위해, Long 값을 씀
+// 필요시 리팩터링 예정
 public class LeaderboardSnapshot {
 
     @Id

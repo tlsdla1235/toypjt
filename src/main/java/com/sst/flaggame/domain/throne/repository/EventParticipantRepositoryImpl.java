@@ -9,6 +9,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+
+// write back을 하려고 하는데, jdbcTemplate을 이용하여 bulk insert를 할 수 있지만,
+// 현재 프로젝트가 jpa에 의존적이기 때문에, 같은 의도를 jpa의 native query로 구현함
+// (mysql같은 경우에는 id값 등에 대해 auto identity로 정의하면 jpa 단에서 bulk insert를 할 수 없음)
 @Repository
 public class EventParticipantRepositoryImpl implements EventParticipantRepositoryCustom {
 
@@ -20,6 +24,8 @@ public class EventParticipantRepositoryImpl implements EventParticipantRepositor
     @Override
     @Transactional
     public void applyDeltaBatch(List<ParticipantDelta> deltas) {
+
+        // 시스템 유저가 참여한 기록 필터링
         List<ParticipantDelta> filtered = deltas.stream()
                 .filter(delta -> delta.userId() != SYSTEM_USER_ID)
                 .toList();

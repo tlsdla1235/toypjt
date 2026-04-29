@@ -12,6 +12,8 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
+
+// EventParticipantRepositoryCustom 를 구현한 impl까지 포함해서 bean으로 등록해줌.
 public interface EventParticipantRepository extends JpaRepository<EventParticipant, EventParticipantId>, EventParticipantRepositoryCustom {
 
     @Query("""
@@ -35,6 +37,7 @@ public interface EventParticipantRepository extends JpaRepository<EventParticipa
         return findTopByEventIdOrderByTotalHoldDesc(eventId, PageRequest.of(0, limit));
     }
 
+    // jpql의 constructor expression
     @Query("""
             select new com.sst.flaggame.domain.throne.dto.ParticipantRow(
                 ep.userId,
@@ -52,6 +55,8 @@ public interface EventParticipantRepository extends JpaRepository<EventParticipa
             Pageable pageable
     );
 
+    // 가장 많이 claim한 사람 찾는 메서드
+    // 책임 분리를 위해 구분
     default Optional<ParticipantRow> findMostClaims(Long eventId) {
         return findMostClaimsRows(eventId, PageRequest.of(0, 1)).stream().findFirst();
     }

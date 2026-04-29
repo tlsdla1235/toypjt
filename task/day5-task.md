@@ -133,8 +133,8 @@
 - [x] drained map이 한 번의 `applyDeltaBatch(...)` 호출로 전달된다
 
 ### CooldownService 검증
-- [ ] `purgeExpired()` 호출 후 `expiresAt < now - 10s`인 row가 사라진다
-- [ ] `expiresAt > now`인 row는 살아남는다
+- [x] `purgeExpired()` 호출 후 `expiresAt < now - 10s`인 row가 사라진다
+- [x] `expiresAt > now`인 row는 살아남는다
 
 ### LeaderboardService 단위 테스트
 - [x] RUNNING 이벤트 없으면 `forceFlush` / `applyDelta` / `saveAllIgnore` 모두 호출되지 않는다
@@ -151,27 +151,27 @@
 - [x] `COOLDOWN`, `ALREADY_OWNER`, `NOT_RUNNING` 실패 시 집계 호출 없음
 
 ### 시간/스케줄러 동작
-- [ ] 빠르게 두 유저로 찬탈 반복 → 10초 이내 `event_participants`에 행이 생긴다
-- [ ] `total_hold_ms`, `claim_success_cnt`, `longest_reign_ms`가 누적된다
-- [ ] `cooldowns`에 `expires_at` 과거 row 수동 삽입 → 1분 안에 삭제된다
-- [ ] RUNNING 이벤트 상태에서 5분 경계가 지나면 `leaderboard_snapshot`에 row가 기록된다
-- [ ] 같은 5분 구간 강제 두 번 호출 → 두 번째는 PK 충돌로 IGNORE
-- [ ] graceful shutdown(SIGTERM)으로 종료 → 마지막 누적분이 `event_participants`에 반영된다
+- [x] 빠르게 두 유저로 찬탈 반복 → 10초 이내 `event_participants`에 행이 생긴다
+- [x] `total_hold_ms`, `claim_success_cnt`, `longest_reign_ms`가 누적된다
+- [x] `cooldowns`에 `expires_at` 과거 row 수동 삽입 → 1분 안에 삭제된다
+- [x] RUNNING 이벤트 상태에서 5분 경계가 지나면 `leaderboard_snapshot`에 row가 기록된다
+- [x] 같은 5분 구간 강제 두 번 호출 → 두 번째는 PK 충돌로 IGNORE
+- [x] graceful shutdown(SIGTERM)으로 종료 → 마지막 누적분이 `event_participants`에 반영된다
 
 ### Data integrity
-- [ ] `SELECT * FROM event_participants WHERE user_id = 1` 결과 0행
-- [ ] `SELECT * FROM leaderboard_snapshot WHERE user_id = 1` 결과 0행
-- [ ] `event_participants.total_hold_ms` ≈ Σ(`throne_reigns.duration_ms` WHERE `user_id <> 1`)
+- [x] `SELECT * FROM event_participants WHERE user_id = 1` 결과 0행
+- [x] `SELECT * FROM leaderboard_snapshot WHERE user_id = 1` 결과 0행
+- [x] `event_participants.total_hold_ms` ≈ Σ(`throne_reigns.duration_ms` WHERE `user_id <> 1`)
 - [ ] 이벤트 종료 직전 마지막 왕의 마지막 보유 구간도 최종적으로 `event_participants`에 반영된다
 
 ## Human-Owned Responsibility
-- [ ] Day 4 상태에서 RUNNING 이벤트 + 일반 사용자 2명 이상 준비
-- [ ] 빠른 찬탈 반복(5~10회)으로 메모리 누적 동작을 직접 확인
-- [ ] 10초 후 `SELECT * FROM event_participants` 직접 조회
-- [ ] `cooldowns`에 만료된 row를 INSERT 한 뒤 1분 대기 → 사라지는지 확인
-- [ ] 5분 경계에 맞춰 `SELECT * FROM leaderboard_snapshot ORDER BY captured_at DESC LIMIT 200` 확인
-- [ ] graceful shutdown (`Ctrl+C`로 SIGTERM, `kill -9` 금지) → 재기동 후 직전 누적분 반영 확인
-- [ ] `event_participants`의 SYSTEM row 부재를 직접 SQL로 검증
+- [x] Day 4 상태에서 RUNNING 이벤트 + 일반 사용자 2명 이상 준비
+- [x] 빠른 찬탈 반복(5~10회)으로 메모리 누적 동작을 직접 확인
+- [x] 10초 후 `SELECT * FROM event_participants` 직접 조회
+- [x] `cooldowns`에 만료된 row를 INSERT 한 뒤 1분 대기 → 사라지는지 확인
+- [x] 5분 경계에 맞춰 `SELECT * FROM leaderboard_snapshot ORDER BY captured_at DESC LIMIT 200` 확인
+- [x] graceful shutdown (`Ctrl+C`로 SIGTERM, `kill -9` 금지) → 재기동 후 직전 누적분 반영 확인
+- [x] `event_participants`의 SYSTEM row 부재를 직접 SQL로 검증
 - [ ] 본인이 "왜 write-back인가, 왜 `pending.remove`인가, 왜 5분 truncate인가" 설명 가능
 
 ## Suggested Manual Test Flow
@@ -190,11 +190,11 @@
 - [x] 코드가 빌드된다
 - [x] `AggregationCache`가 10초 주기로 메모리 → DB write-back을 수행한다
 - [x] `pending.remove` 기반 race-safe flush가 동작한다
-- [ ] `@PreDestroy`로 셧다운 시 누적분이 보존된다
+- [x] `@PreDestroy`로 셧다운 시 누적분이 보존된다
 - [x] SYSTEM 유저가 `event_participants` / `leaderboard_snapshot`에 절대 들어가지 않는다 (4중 방어)
-- [ ] 만료 쿨타임이 1분 안에 삭제된다
-- [ ] 5분 주기 리더보드 스냅샷이 기록된다
-- [ ] 동일 5분 구간 중복 호출이 PK 충돌로 조용히 skip된다
+- [x] 만료 쿨타임이 1분 안에 삭제된다
+- [x] 5분 주기 리더보드 스냅샷이 기록된다
+- [x] 동일 5분 구간 중복 호출이 PK 충돌로 조용히 skip된다
 - [x] 찬탈 핫패스(`doClaim`)가 DB 집계 UPDATE를 직접 하지 않는다
 - [ ] 본인이 흐름을 설명할 수 있다
 
@@ -205,6 +205,12 @@
 - `LeaderboardService.snapshotLeaderboard()`의 spec 9.4 마지막 줄 `ssePublisher.publishLeaderboardSnapshot(...)`은 Day 6에서 채울 자리만 TODO 주석으로 남긴다.
 - Day 6 finalize 구현 시에는 `closeOpenReign(eventId, endedAt)` 이후 마지막 왕의 duration을 집계 캐시에 반영하고 `forceFlush()`까지 이어지는 흐름을 반드시 연결한다.
 - 신규 Flyway 마이그레이션 불필요 — V1에 `event_participants`, `leaderboard_snapshot` 테이블 모두 존재.
+- 2026-04-29 실검증 결과:
+  - 두 사용자 claim 반복 후 `event_participants` 누적 반영 확인
+  - 만료 cooldown row 자동 삭제 + 미래 cooldown row 생존 확인
+  - `15:30`, `15:35`, `15:40` 리더보드 스냅샷 확인
+  - 8081 보조 인스턴스를 함께 띄워 `15:40` 구간 중복 실행 방어(`INSERT IGNORE`) 확인
+  - 8080 인스턴스 SIGTERM 종료 시 `finalFlush()` 반영 확인
 
 ## Critical Files To Modify / Create
 
