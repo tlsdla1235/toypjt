@@ -139,6 +139,8 @@ public class ThroneService {
         ThroneState nextState = new ThroneState(userId, newReign.getId(), now);
         runAfterCommit(() -> {
             throneMap.put(eventId, nextState);
+
+            // 둘의 userid는 서로 다르기 때문에 밑의 aggregationCache의 메소드 두개를 하나의 메소드로 묶을 수 없음
             aggregationCache.addReignEnd(eventId, currentState.currentKingId(), heldMs);
             aggregationCache.addClaimSuccess(eventId, userId);
         });
